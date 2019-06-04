@@ -13,7 +13,7 @@ import aiohttp
 import portpicker
 
 from .controller import Controller
-from .paths import Paths
+from .paths import Paths, PF
 
 logger = logging.getLogger(__name__)
 
@@ -91,6 +91,8 @@ class SC2Process:
             "-tempDir",
             self._tmp_dir,
         ]
+        if PF == "WineLinux":
+            args.insert(0, "wine")
         if self._render:
             args.extend(["-eglpath", "libEGL.so"])
 
