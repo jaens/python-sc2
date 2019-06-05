@@ -90,6 +90,8 @@ class SC2Process:
             str(Paths.BASE),
             "-tempDir",
             self._tmp_dir,
+            "-dataVersion",
+            Paths.DATA_VERSION
         ]
         if PF == "WineLinux":
             args.insert(0, "wine")
