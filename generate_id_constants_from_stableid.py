@@ -140,6 +140,7 @@ def generate_python_code(enums):
 
 
 if __name__ == "__main__":
-    with open(DATA_JSON[PF], encoding="utf-8") as data_file:
+    stableid_json = os.getenv("DATA_JSON") or DATA_JSON[PF]
+    with open(stableid_json, encoding="utf-8") as data_file:
         data = json.loads(data_file.read())
         generate_python_code(parse_data(data))
