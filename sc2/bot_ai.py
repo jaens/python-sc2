@@ -12,6 +12,7 @@ from .cache import property_cache_forever, property_cache_once_per_frame
 from .data import ActionResult, Alert, Race, Result, Target, race_gas, race_townhalls, race_worker
 from .data import ActionResult, Attribute, Race, race_worker, race_townhalls, race_gas, Target, Result
 from .game_data import AbilityData, GameData
+from .paths import Paths
 
 # imports for mypy and pycharm autocomplete
 from .game_state import GameState
@@ -793,7 +794,7 @@ class BotAI:
         self.state: GameState = state  # See game_state.py
         # update pathing grid
         self._game_info.pathing_grid = PixelMap(
-            proto_game_info.game_info.start_raw.pathing_grid, in_bits=True, mirrored=False
+            proto_game_info.game_info.start_raw.pathing_grid, in_bits=Paths.NEW_PROTO
         )
         # Required for events
         self._units_previous_map = {unit.tag: unit for unit in self.units}

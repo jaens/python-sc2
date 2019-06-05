@@ -7,6 +7,7 @@ from .cache import property_immutable_cache, property_mutable_cache
 from .pixel_map import PixelMap
 from .player import Player
 from .position import Point2, Rect, Size
+from .paths import Paths
 
 if TYPE_CHECKING:
     from s2clientprotocol import sc2api_pb2 as sc_pb
@@ -179,11 +180,11 @@ class GameInfo:
         self.map_size: Size = Size.from_proto(self._proto.start_raw.map_size)
 
         # self.pathing_grid[point]: if 0, point is not pathable, if 1, point is pathable
-        self.pathing_grid: PixelMap = PixelMap(self._proto.start_raw.pathing_grid, in_bits=True, mirrored=False)
+        self.pathing_grid: PixelMap = PixelMap(self._proto.start_raw.pathing_grid, in_bits=Paths.NEW_PROTO)
         # self.terrain_height[point]: returns the height in range of 0 to 255 at that point
-        self.terrain_height: PixelMap = PixelMap(self._proto.start_raw.terrain_height, mirrored=False)
+        self.terrain_height: PixelMap = PixelMap(self._proto.start_raw.terrain_height)
         # self.placement_grid[point]: if 0, point is not pathable, if 1, point is pathable
-        self.placement_grid: PixelMap = PixelMap(self._proto.start_raw.placement_grid, in_bits=True, mirrored=False)
+        self.placement_grid: PixelMap = PixelMap(self._proto.start_raw.placement_grid, in_bits=Paths.NEW_PROTO)
         self.playable_area = Rect.from_proto(self._proto.start_raw.playable_area)
         self.map_center = self.playable_area.center
         self.map_ramps: List[Ramp] = None  # Filled later by BotAI._prepare_first_step

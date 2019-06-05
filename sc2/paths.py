@@ -116,8 +116,9 @@ class _MetaPaths(type):
 
         try:
             self.VERSION = 73286
+            self.NEW_PROTO = False
             self.DATA_VERSION = VERSIONS[self.VERSION].data_version
-            
+
             base = os.environ.get("SC2PATH")
             if base is None and USERPATH[PF] is not None:
                 einfo = str(Path.home().expanduser()) + USERPATH[PF]
