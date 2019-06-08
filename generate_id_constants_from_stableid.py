@@ -124,16 +124,14 @@ def generate_python_code(enums):
 
         code = [HEADER, "import enum", "\n", f"class {class_name}(enum.Enum):"]
 
-        for key, value in sorted(body.items(), key=lambda p: p[1]):
+        items = sorted(body.items(), key=lambda p: p[1])
+        for key, value in items:
             code.append(f"    {key} = {value}")
 
-        code += [
-            "\n",
-            f"for item in {class_name}:",
-            f"    assert not item.name in globals()",
-            f"    globals()[item.name] = item",
-            "",
-        ]
+        code.append("")
+
+        for key, value in items:
+            code.append(f"{key} = {class_name}.{key}")
 
         with (idsdir / FILE_TRANSLATE[name]).with_suffix(".py").open("w") as f:
             f.write("\n".join(code))
