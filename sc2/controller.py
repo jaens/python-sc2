@@ -1,9 +1,15 @@
+from __future__ import annotations
+
 import logging
+from typing import Sequence, TYPE_CHECKING
 
 from s2clientprotocol import sc2api_pb2 as sc_pb
 
-from .player import Computer
+from .player import AbstractPlayer, Computer
 from .protocol import Protocol
+
+if TYPE_CHECKING:
+    from .maps import Map
 
 logger = logging.getLogger(__name__)
 
@@ -13,10 +19,10 @@ class Controller(Protocol):
         self.__process = process
 
     @property
-    def running(self):
+    def running(self) -> bool:
         return self.__process._process is not None
 
-    async def create_game(self, game_map, players, realtime, random_seed=None):
+    async def create_game(self, game_map: Map, players: Sequence[AbstractPlayer], realtime: bool, random_seed=None) -> sc_pb.Response:
         assert isinstance(realtime, bool)
         req = sc_pb.RequestCreateGame(local_map=sc_pb.LocalMap(map_path=str(game_map.relative_path)), realtime=realtime)
         if random_seed is not None:

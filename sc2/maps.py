@@ -1,10 +1,20 @@
+from __future__ import annotations
+
 import logging
+from typing import List, Optional, Union, overload
+from pathlib import Path
 
 from .paths import Paths
 
+
 logger = logging.getLogger(__name__)
 
-def get(name=None):
+@overload
+def get() -> List[Map]: ...
+@overload
+def get(name: str) -> Map: ...
+
+def get(name: Optional[str]=None) -> Union[List[Map], Map]:
     maps = []
     for mapdir in (p for p in Paths.MAPS.iterdir()):
         if mapdir.is_dir():
@@ -25,7 +35,7 @@ def get(name=None):
     raise KeyError(f"Map '{name}' was not found. Please put the map file in \"/StarCraft II/Maps/\".")
 
 class Map:
-    def __init__(self, path):
+    def __init__(self, path: Path):
         self.path = path
 
         if self.path.is_absolute():
@@ -38,15 +48,15 @@ class Map:
             self.relative_path = self.path
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self.path.stem
 
     @property
-    def data(self):
+    def data(self) -> bytes:
         with open(self.path, "rb") as f:
             return f.read()
 
-    def matches(self, name):
+    def matches(self, name) -> bool:
         return self.name.lower().replace(" ", "") == name.lower().replace(" ", "")
 
     def __repr__(self):

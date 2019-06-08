@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Union
+from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Union, TYPE_CHECKING
 
 from s2clientprotocol import common_pb2 as common_pb
 from s2clientprotocol import debug_pb2 as debug_pb
@@ -19,24 +19,28 @@ from .renderer import Renderer
 from .unit import Unit
 from .units import Units
 
+if TYPE_CHECKING:
+    import aiohttp
+    from .unit_command import UnitCommand
+
 logger = logging.getLogger(__name__)
 
 
 class Client(Protocol):
-    def __init__(self, ws):
+    def __init__(self, ws: "aiohttp.ClientWebSocketResponse"):
         super().__init__(ws)
         self.game_step = 8
         self._player_id = None
-        self._game_result = None
-        self._debug_texts = []
-        self._debug_lines = []
-        self._debug_boxes = []
-        self._debug_spheres = []
+        self._game_result: Optional[Dict[int, Result]] = None
+        self._debug_texts: List[debug_pb.DebugText] = []
+        self._debug_lines: List[debug_pb.DebugLine] = []
+        self._debug_boxes: List[debug_pb.DebugBox] = []
+        self._debug_spheres: List[debug_pb.DebugSphere] = []
 
         self._renderer = None
 
     @property
-    def in_game(self):
+    def in_game(self) -> bool:
         return self._status == Status.in_game
 
     async def join_game(self, name=None, race=None, observed_player_id=None, portconfig=None, rgb_render_config=None):
@@ -107,7 +111,7 @@ class Client(Protocol):
             f.write(result.save_replay.data)
         logger.info(f"Saved replay to {path}")
 
-    async def observation(self):
+    async def observation(self) -> sc_pb.Response:
         result = await self._execute(observation=sc_pb.RequestObservation())
         assert result.HasField("observation")
 
@@ -162,7 +166,7 @@ class Client(Protocol):
         result = await self._execute(game_info=sc_pb.RequestGameInfo())
         return GameInfo(result.game_info)
 
-    async def actions(self, actions, return_successes=False):
+    async def actions(self, actions: Union[UnitCommand, List[UnitCommand]], return_successes=False) -> List[ActionResult]:
         if not actions:
             return None
         elif not isinstance(actions, list):
@@ -309,7 +313,7 @@ class Client(Protocol):
             )
         )
 
-    async def debug_create_unit(self, unit_spawn_commands: List[List[Union[UnitTypeId, int, Point2, Point3]]]):
+    async def debug_create_unit(self, unit_spawn_commands: List[Tuple[UnitTypeId, int, Point2, Point3]]) -> None:
         """ Usage example (will spawn 1 marine in the center of the map for player ID 1):
         await self._client.debug_create_unit([[UnitTypeId.MARINE, 1, self._game_info.map_center, 1]]) """
         assert isinstance(unit_spawn_commands, list)

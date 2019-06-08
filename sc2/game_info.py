@@ -1,5 +1,5 @@
 from collections import deque
-from typing import Any, Deque, Dict, FrozenSet, Generator, List, Optional, Sequence, Set, Tuple, Union
+from typing import Any, Deque, Dict, FrozenSet, Generator, List, Optional, Sequence, Set, Tuple, Union, TYPE_CHECKING
 
 import numpy as np
 
@@ -7,6 +7,9 @@ from .cache import property_immutable_cache, property_mutable_cache
 from .pixel_map import PixelMap
 from .player import Player
 from .position import Point2, Rect, Size
+
+if TYPE_CHECKING:
+    from s2clientprotocol import sc2api_pb2 as sc_pb
 
 
 class Ramp:
@@ -16,7 +19,7 @@ class Ramp:
         # tested by printing actual building locations vs calculated depot positions
         self.x_offset = 0.5
         self.y_offset = 0.5
-        self.cache = {}
+        self.cache: dict = {}
 
     @property_immutable_cache
     def _height_map(self):
@@ -41,7 +44,7 @@ class Ramp:
     def upper(self) -> Set[Point2]:
         """ Returns the upper points of a ramp. """
         current_max = -10000
-        result = set()
+        result: Set[Point2] = set()
         for p in self._points:
             height = self.height_at(p)
             if height > current_max:
@@ -74,7 +77,7 @@ class Ramp:
     @property
     def lower(self) -> Set[Point2]:
         current_min = 10000
-        result = set()
+        result: Set[Point2] = set()
         for p in self._points:
             height = self.height_at(p)
             if height < current_min:
@@ -165,7 +168,7 @@ class Ramp:
 
 
 class GameInfo:
-    def __init__(self, proto):
+    def __init__(self, proto: "sc_pb.ResponseGameInfo"):
         # TODO: this might require an update during the game because placement grid and
         # playable grid are greyed out on minerals, start locations and ramps (debris)
         # but we do not want to call information in the fog of war
@@ -217,7 +220,7 @@ class GameInfo:
         ramps = [Ramp(group, self) for group in self._find_groups(ramp_points)]
         return ramps, vision_blockers
 
-    def _find_groups(self, points: Set[Point2], minimum_points_per_group: int = 5):
+    def _find_groups(self, points: Sequence[Point2], minimum_points_per_group: int = 5):
         """
         From a set of points, this function will try to group points together by
         painting clusters of points in a rectangular map using flood fill algorithm.
@@ -255,7 +258,7 @@ class GameInfo:
                         continue
                     if picture[py][px] != NOT_COLORED_YET:
                         continue
-                    point: Point2 = Point2((px, py))
+                    point = Point2((px, py))
                     remaining.discard(point)
                     paint(point)
                     queue.append(point)

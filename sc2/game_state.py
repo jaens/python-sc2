@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional, Set, Tuple, Union  # mypy type checking
+from typing import Any, Dict, List, Optional, Set, Tuple, Union, TYPE_CHECKING  # mypy type checking
 
 from .constants import geyser_ids, mineral_ids
 from .data import Alliance, DisplayType
@@ -11,9 +11,13 @@ from .score import ScoreDetails
 from .unit import Unit
 from .units import Units
 
+if TYPE_CHECKING:
+    from s2clientprotocol import sc2api_pb2 as sc_pb
+    from s2clientprotocol import raw_pb2 as raw_pb
+
 
 class Blip:
-    def __init__(self, proto):
+    def __init__(self, proto: "raw_pb.Unit"):
         self._proto = proto
 
     @property
@@ -71,7 +75,7 @@ class Common:
 
 
 class EffectData:
-    def __init__(self, proto):
+    def __init__(self, proto: "raw_pb.Effect"):
         self._proto = proto
 
     @property
@@ -99,7 +103,7 @@ class EffectData:
 
 
 class GameState:
-    def __init__(self, response_observation):
+    def __init__(self, response_observation: "sc_pb.ResponseObservation"):
         self.response_observation = response_observation
         self.actions = response_observation.actions  # successful actions since last loop
         self.action_errors = response_observation.action_errors  # error actions since last loop
@@ -122,7 +126,7 @@ class GameState:
         self.score: ScoreDetails = ScoreDetails(self.observation.score)
         self.abilities = self.observation.abilities  # abilities of selected units
 
-        self._blipUnits = []
+        self._blipUnits: List[raw_pb.Unit] = []
         self.own_units: Units = Units([])
         self.enemy_units: Units = Units([])
         self.mineral_field: Units = Units([])

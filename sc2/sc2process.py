@@ -35,7 +35,7 @@ class kill_switch:
 class SC2Process:
     def __init__(
         self, host: str = "127.0.0.1", port: Optional[int] = None, fullscreen: bool = False, render: bool = False
-    ) -> None:
+    ):
         assert isinstance(host, str)
         assert isinstance(port, int) or port is None
 
@@ -47,11 +47,11 @@ class SC2Process:
         else:
             self._port = port
         self._tmp_dir = tempfile.mkdtemp(prefix="SC2_")
-        self._process = None
-        self._session = None
-        self._ws = None
+        self._process: Optional[subprocess.Popen] = None
+        self._session: Optional[aiohttp.ClientSession] = None
+        self._ws: Optional[aiohttp.ClientWebSocketResponse] = None
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> Controller:
         kill_switch.add(self)
 
         def signal_handler(*args):
@@ -69,15 +69,15 @@ class SC2Process:
 
         return Controller(self._ws, self)
 
-    async def __aexit__(self, *args):
+    async def __aexit__(self, *args) -> None:
         kill_switch.kill_all()
         signal.signal(signal.SIGINT, signal.SIG_DFL)
 
     @property
-    def ws_url(self):
+    def ws_url(self) -> str:
         return f"ws://{self._host}:{self._port}/sc2api"
 
-    def _launch(self):
+    def _launch(self) -> subprocess.Popen:
         args = [
             str(Paths.EXECUTABLE),
             "-listen",
@@ -103,7 +103,7 @@ class SC2Process:
             # , env=run_config.env
         )
 
-    async def _connect(self):
+    async def _connect(self) -> 'aiohttp.ClientWebSocketResponse':
         for i in range(60):
             if self._process is None:
                 # The ._clean() was called, clearing the process
@@ -111,8 +111,8 @@ class SC2Process:
                 sys.exit()
 
             await asyncio.sleep(1)
+            self._session = aiohttp.ClientSession()
             try:
-                self._session = aiohttp.ClientSession()
                 ws = await self._session.ws_connect(self.ws_url, timeout=120)
                 logger.debug("Websocket connection ready")
                 return ws
@@ -124,7 +124,7 @@ class SC2Process:
         logger.debug("Websocket connection to SC2 process timed out")
         raise TimeoutError("Websocket")
 
-    async def _close_connection(self):
+    async def _close_connection(self) -> None:
         logger.info("Closing connection...")
 
         if self._ws is not None:
@@ -133,7 +133,7 @@ class SC2Process:
         if self._session is not None:
             await self._session.close()
 
-    def _clean(self):
+    def _clean(self) -> None:
         logger.info("Cleaning up...")
 
         if self._process is not None:

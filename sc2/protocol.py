@@ -1,12 +1,15 @@
 import asyncio
 import sys
-
+from typing import TYPE_CHECKING
 import logging
-logger = logging.getLogger(__name__)
 
 from s2clientprotocol import sc2api_pb2 as sc_pb
 
 from .data import Status
+
+if TYPE_CHECKING:
+    import aiohttp
+
 
 logger = logging.getLogger(__name__)
 
@@ -23,12 +26,12 @@ class ConnectionAlreadyClosed(ProtocolError):
 
 
 class Protocol:
-    def __init__(self, ws):
+    def __init__(self, ws: "aiohttp.ClientWebSocketResponse"):
         assert ws
         self._ws = ws
         self._status = None
 
-    async def __request(self, request):
+    async def __request(self, request: sc_pb.Request) -> sc_pb.Response:
         logger.debug(f"Sending request: {request !r}")
         try:
             await self._ws.send_bytes(request.SerializeToString())
@@ -57,7 +60,7 @@ class Protocol:
         logger.debug(f"Response received")
         return response
 
-    async def _execute(self, **kwargs):
+    async def _execute(self, **kwargs) -> sc_pb.Response:
         assert len(kwargs) == 1, "Only one request allowed"
 
         request = sc_pb.Request(**kwargs)
@@ -75,11 +78,11 @@ class Protocol:
 
         return response
 
-    async def ping(self):
+    async def ping(self) -> sc_pb.Response:
         result = await self._execute(ping=sc_pb.RequestPing())
         return result
 
-    async def quit(self):
+    async def quit(self) -> None:
         try:
             await self._execute(quit=sc_pb.RequestQuit())
         except ConnectionAlreadyClosed:

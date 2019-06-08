@@ -1,12 +1,16 @@
 from bisect import bisect_left
 from functools import lru_cache, reduce
-from typing import Any, Dict, List, Optional, Set, Tuple, Union  # mypy type checking
+from typing import Any, Dict, List, Optional, Set, Tuple, Union, TYPE_CHECKING  # mypy type checking
 
 from .constants import ZERGLING
 from .data import Attribute, Race
 from .ids.ability_id import AbilityId
 from .ids.unit_typeid import UnitTypeId
 from .unit_command import UnitCommand
+
+if TYPE_CHECKING:
+    from s2clientprotocol import sc2api_pb2 as sc_pb
+    from s2clientprotocol import data_pb2 as data_pb
 
 # Set of parts of names of abilities that have no cost
 # E.g every ability that has 'Hold' in its name is free
@@ -22,7 +26,7 @@ def split_camel_case(text) -> list:
     ))
 
 class GameData:
-    def __init__(self, data):
+    def __init__(self, data: "sc_pb.ResponseData"):
         ids = set(a.value for a in AbilityId if a.value != 0)
         self.abilities = {a.ability_id: AbilityData(self, a) for a in data.abilities if a.ability_id in ids}
         self.units = {u.unit_id: UnitTypeData(self, u) for u in data.units if u.available}
@@ -30,7 +34,7 @@ class GameData:
         self.unit_types: Dict[int, UnitTypeId] = {}
 
     @lru_cache(maxsize=256)
-    def calculate_ability_cost(self, ability) -> "Cost":
+    def calculate_ability_cost(self, ability: Union[AbilityId, UnitCommand, "AbilityData"]) -> "Cost":
         if isinstance(ability, AbilityId):
             ability = self.abilities[ability.value]
         elif isinstance(ability, UnitCommand):
@@ -73,14 +77,14 @@ class AbilityData:
     ability_ids: List[int] = [ability_id.value for ability_id in AbilityId][1:]  # sorted list
 
     @classmethod
-    def id_exists(cls, ability_id):
+    def id_exists(cls, ability_id: int) -> bool:
         assert isinstance(ability_id, int), f"Wrong type: {ability_id} is not int"
         if ability_id == 0:
             return False
         i = bisect_left(cls.ability_ids, ability_id)  # quick binary search
         return i != len(cls.ability_ids) and cls.ability_ids[i] == ability_id
 
-    def __init__(self, game_data, proto):
+    def __init__(self, game_data: GameData, proto: "data_pb.AbilityData"):
         self._game_data = game_data
         self._proto = proto
 
@@ -123,7 +127,7 @@ class AbilityData:
         return self._game_data.calculate_ability_cost(self.id)
 
 class UnitTypeData:
-    def __init__(self, game_data, proto):
+    def __init__(self, game_data: GameData, proto: "data_pb.UnitTypeData"):
         # The ability_id for lurkers is
         # LURKERASPECTMPFROMHYDRALISKBURROWED_LURKERMPFROMHYDRALISKBURROWED
         # instead of the correct MORPH_LURKER.
@@ -251,7 +255,7 @@ class UnitTypeData:
 
 
 class UpgradeData:
-    def __init__(self, game_data, proto):
+    def __init__(self, game_data: GameData, proto: "data_pb.UpgradeData"):
         self._game_data = game_data
         self._proto = proto
 
@@ -276,7 +280,7 @@ class UpgradeData:
 
 
 class Cost:
-    def __init__(self, minerals, vespene, time=None):
+    def __init__(self, minerals: int, vespene: int, time: Optional[float]=None):
         self.minerals = minerals
         self.vespene = vespene
         self.time = time

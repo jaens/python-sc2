@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import warnings
-from typing import Any, Dict, List, Optional, Set, Tuple, Union  # mypy type checking
+from typing import Any, Dict, List, Optional, Set, Tuple, Union, TYPE_CHECKING  # mypy type checking
 
 from . import unit_command
 from .cache import property_immutable_cache, property_mutable_cache
@@ -9,6 +11,11 @@ from .ids.ability_id import AbilityId
 from .ids.buff_id import BuffId
 from .ids.unit_typeid import UnitTypeId
 from .position import Point2, Point3
+
+if TYPE_CHECKING:
+    from .game_data import GameData, UnitTypeData
+    from .bot_ai import BotAI
+    from s2clientprotocol import raw_pb2 as raw_pb
 
 warnings.simplefilter("once")
 
@@ -21,13 +28,13 @@ class UnitGameData:
     # is not being used and the bots access the same sc2 library
     # Could use inspect for that: Loop over i for "calframe[i].frame.f_locals["self"]"
     # until an instance of BotAi is found
-    _game_data = None
-    _bot_object = None
+    _game_data: GameData = None
+    _bot_object: BotAI = None
 
 
 class UnitOrder:
     @classmethod
-    def from_proto(cls, proto):
+    def from_proto(cls, proto: raw_pb.UnitOrder):
         return cls(
             UnitGameData._game_data.abilities[proto.ability_id],
             (proto.target_world_space_pos if proto.HasField("target_world_space_pos") else proto.target_unit_tag),
@@ -44,9 +51,9 @@ class UnitOrder:
 
 
 class Unit:
-    def __init__(self, proto_data):
+    def __init__(self, proto_data: Union[raw_pb.Unit, raw_pb.PassengerUnit]):
         self._proto = proto_data
-        self.cache = {}
+        self.cache: dict = {}
 
     def __repr__(self) -> str:
         """ Returns string of this form: PassengerUnit(name='SCV', tag=4396941328). """
@@ -837,11 +844,11 @@ class Unit:
     def __hash__(self):
         return self.tag
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         try:
             return self.tag == other.tag
         except:
             return False
 
-    def __call__(self, ability, target=None, queue=False):
+    def __call__(self, ability, target=None, queue=False) -> unit_command.UnitCommand:
         return unit_command.UnitCommand(ability, self, target=target, queue=queue)

@@ -1,8 +1,19 @@
+from typing import Optional, TYPE_CHECKING
+
 from .data import AIBuild, PlayerType, Race, Difficulty
 from .bot_ai import BotAI
 
+if TYPE_CHECKING:
+    from s2clientprotocol import sc2api_pb2 as sc_pb
+
 class AbstractPlayer:
-    def __init__(self, p_type, race=None, name=None, difficulty=None, ai_build=None, fullscreen=False):
+    def __init__(self,
+                 p_type: PlayerType,
+                 race: Race = None,
+                 name: Optional[str] = None,
+                 difficulty: Optional[Difficulty] = None,
+                 ai_build: Optional[AIBuild] = None,
+                 fullscreen=False):
         assert isinstance(p_type, PlayerType), f"p_type is of type {type(p_type)}"
         assert name is None or isinstance(name, str), f"name is of type {type(name)}"
 
@@ -31,7 +42,7 @@ class AbstractPlayer:
 
 
 class Human(AbstractPlayer):
-    def __init__(self, race, name=None, fullscreen=False):
+    def __init__(self, race: Race, name: Optional[str]=None, fullscreen=False):
         super().__init__(PlayerType.Participant, race, name=name, fullscreen=fullscreen)
 
     def __str__(self):
@@ -42,7 +53,7 @@ class Human(AbstractPlayer):
 
 
 class Bot(AbstractPlayer):
-    def __init__(self, race, ai, name=None, fullscreen=False):
+    def __init__(self, race: Race, ai: Optional[BotAI], name: Optional[str]=None, fullscreen=False):
         """
         AI can be None if this player object is just used to inform the
         server about player types.
@@ -59,7 +70,7 @@ class Bot(AbstractPlayer):
 
 
 class Computer(AbstractPlayer):
-    def __init__(self, race, difficulty=Difficulty.Easy, ai_build=AIBuild.RandomBuild):
+    def __init__(self, race: Race, difficulty=Difficulty.Easy, ai_build=AIBuild.RandomBuild):
         super().__init__(PlayerType.Computer, race, difficulty=difficulty, ai_build=ai_build)
 
     def __str__(self):
@@ -74,7 +85,7 @@ class Observer(AbstractPlayer):
 
 class Player(AbstractPlayer):
     @classmethod
-    def from_proto(cls, proto):
+    def from_proto(cls, proto: "sc_pb.PlayerInfo"):
         if PlayerType(proto.type) == PlayerType.Observer:
             return cls(proto.player_id, PlayerType(proto.type), None, None, None)
         return cls(

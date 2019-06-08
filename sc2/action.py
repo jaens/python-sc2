@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 from itertools import groupby
+from typing import Iterable, Iterator, TYPE_CHECKING
 
 from s2clientprotocol import common_pb2 as common_pb
 from s2clientprotocol import raw_pb2 as raw_pb
@@ -6,7 +9,10 @@ from s2clientprotocol import raw_pb2 as raw_pb
 from .position import Point2
 from .unit import Unit
 
-def combine_actions(action_iter):
+if TYPE_CHECKING:
+    from .unit_command import UnitCommand
+
+def combine_actions(action_iter: Iterable[UnitCommand]) -> Iterator[raw_pb.ActionRaw]:
     for key, items in groupby(action_iter, key=lambda a: a.combining_tuple):
         ability, target, queue = key
 

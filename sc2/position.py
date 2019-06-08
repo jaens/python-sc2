@@ -1,7 +1,11 @@
 import itertools
 import math
 import random
-from typing import Any, Dict, List, Optional, Set, Tuple, Union  # for mypy type checking
+from typing import Any, Dict, List, Optional, Set, Tuple, Union, TYPE_CHECKING  # for mypy type checking
+
+if TYPE_CHECKING:
+    from .unit import Unit
+    from .units import Units
 
 EPSILON = 10 ** -8
 

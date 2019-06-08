@@ -1,9 +1,12 @@
+from __future__ import annotations
+
 import itertools
 import logging
 import math
 import random
 from collections import Counter
-from typing import Any, Dict, List, Optional, Set, Tuple, Union  # mypy type checking
+from typing import Any, Dict, List, Optional, Set, Tuple, Union, TYPE_CHECKING  # mypy type checking
+import typing
 
 from .cache import property_cache_forever, property_cache_once_per_frame
 from .data import ActionResult, Alert, Race, Result, Target, race_gas, race_townhalls, race_worker
@@ -20,6 +23,11 @@ from .pixel_map import PixelMap
 from .position import Point2, Point3
 from .unit import Unit
 from .units import Units
+
+if TYPE_CHECKING:
+    from .client import Client
+    from .game_info import GameInfo, Ramp
+    from .unit_command import UnitCommand
 
 logger = logging.getLogger(__name__)
 
@@ -130,7 +138,7 @@ class BotAI:
         return self.state.enemy_units.structure
 
     @property
-    def main_base_ramp(self) -> "Ramp":
+    def main_base_ramp(self) -> Ramp:
         """ Returns the Ramp instance of the closest main-ramp to start location.
         Look in game_info.py for more information """
         if hasattr(self, "cached_main_base_ramp"):
@@ -404,7 +412,7 @@ class BotAI:
         owned = {}
         for el in self.expansion_locations:
 
-            def is_near_to_expansion(t):
+            def is_near_to_expansion(t: Unit):
                 return t.distance_to(el) < self.EXPANSION_GAP_THRESHOLD
 
             th = next((x for x in self.townhalls if is_near_to_expansion(x)), None)
@@ -419,7 +427,7 @@ class BotAI:
         return required == 0 or self.supply_left >= required
 
     def can_afford(
-        self, item_id: Union[UnitTypeId, UpgradeId, AbilityId], check_supply_cost: bool = True
+        self, item_id: Union[UnitTypeId, UpgradeId, AbilityId, UnitCommand, AbilityData], check_supply_cost: bool = True
     ) -> "CanAffordWrapper":
         """Tests if the player has enough resources to build a unit or cast an ability."""
         enough_supply = True
@@ -581,7 +589,7 @@ class BotAI:
     @property_cache_once_per_frame
     def _abilities_all_units(self) -> Counter:
         """ Cache for the already_pending function, includes protoss units warping in, and all units in production, and all structures, and all morphs """
-        abilities_amount = Counter()
+        abilities_amount: typing.Counter[AbilityData] = Counter()
         for unit in self.units:  # type: Unit
             for order in unit.orders:
                 abilities_amount[order.ability] += 1
@@ -597,7 +605,7 @@ class BotAI:
         """ Cache for the already_pending function, includes all worker orders (including pending).
         Zerg units in production (except queens and morphing units) and structures in production,
         counts double for terran """
-        abilities_amount = Counter()
+        abilities_amount: typing.Counter[AbilityData] = Counter()
         for worker in self.workers:  # type: Unit
             for order in worker.orders:
                 abilities_amount[order.ability] += 1
@@ -658,7 +666,7 @@ class BotAI:
             return ActionResult.Error
         return await self.do(unit.build(building, p))
 
-    async def do(self, action):
+    async def do(self, action: UnitCommand) -> List[ActionResult]:
         if not self.can_afford(action):
             logger.warning(f"Cannot afford action {action}")
             return ActionResult.Error
@@ -675,7 +683,7 @@ class BotAI:
 
         return r
 
-    async def do_actions(self, actions: List["UnitCommand"], prevent_double=True):
+    async def do_actions(self, actions: List[UnitCommand], prevent_double=True) -> List[ActionResult]:
         """ Unlike 'self.do()', this function does not instantly subtract minerals and vespene. """
         if not actions:
             return None
@@ -688,12 +696,11 @@ class BotAI:
 
         return await self._client.actions(actions)
 
-    def prevent_double_actions(self, action):
+    def prevent_double_actions(self, action: UnitCommand) -> bool:
         # always add actions if queued
         if action.queue:
             return True
         if action.unit.orders:
-            # action: UnitCommand
             # current_action: UnitOrder
             current_action = action.unit.orders[0]
             if current_action.ability.id != action.ability:
@@ -764,14 +771,14 @@ class BotAI:
 
     def _prepare_start(self, client, player_id, game_info, game_data):
         """Ran until game start to set game and player data."""
-        self._client: "Client" = client
-        self._game_info: "GameInfo" = game_info
+        self._client: Client = client
+        self._game_info: GameInfo = game_info
         self._game_data: GameData = game_data
 
         self.player_id: int = player_id
         self.race: Race = Race(self._game_info.player_races[self.player_id])
 
-        self._units_previous_map: dict = dict()
+        self._units_previous_map: Dict[int, Unit] = {}
         self._previous_upgrades: Set[UpgradeId] = set()
         self.units: Units = Units([])
 
@@ -781,15 +788,15 @@ class BotAI:
             self._game_info.player_start_location = self.townhalls.first.position
         self._game_info.map_ramps, self._game_info.vision_blockers = self._game_info._find_ramps_and_vision_blockers()
 
-    def _prepare_step(self, state, proto_game_info):
+    def _prepare_step(self, state: GameState, proto_game_info):
         # Set attributes from new state before on_step."""
         self.state: GameState = state  # See game_state.py
         # update pathing grid
-        self._game_info.pathing_grid: PixelMap = PixelMap(
+        self._game_info.pathing_grid = PixelMap(
             proto_game_info.game_info.start_raw.pathing_grid, in_bits=True, mirrored=False
         )
         # Required for events
-        self._units_previous_map: Dict = {unit.tag: unit for unit in self.units}
+        self._units_previous_map = {unit.tag: unit for unit in self.units}
         self.units: Units = state.own_units
         self.workers: Units = self.units(race_worker[self.race])
         self.townhalls: Units = self.units(race_townhalls[self.race])
@@ -838,7 +845,7 @@ class BotAI:
             if unit.tag not in self._units_previous_map:
                 await self.on_building_construction_started(unit)
 
-    async def _issue_building_complete_event(self, unit):
+    async def _issue_building_complete_event(self, unit: Unit):
         if unit.build_progress < 1:
             return
         if unit.tag not in self._units_previous_map:
@@ -851,7 +858,7 @@ class BotAI:
         for unit_tag in self.state.dead_units:
             await self.on_unit_destroyed(unit_tag)
 
-    async def on_unit_destroyed(self, unit_tag):
+    async def on_unit_destroyed(self, unit_tag: int):
         """ Override this in your bot class.
         Note that this function uses unit tags because the unit does not exist any more. """
 
@@ -884,7 +891,7 @@ class BotAI:
 
 
 class CanAffordWrapper:
-    def __init__(self, can_afford_minerals, can_afford_vespene, have_enough_supply):
+    def __init__(self, can_afford_minerals: bool, can_afford_vespene: bool, have_enough_supply: bool):
         self.can_afford_minerals = can_afford_minerals
         self.can_afford_vespene = can_afford_vespene
         self.have_enough_supply = have_enough_supply
@@ -893,7 +900,7 @@ class CanAffordWrapper:
         return self.can_afford_minerals and self.can_afford_vespene and self.have_enough_supply
 
     @property
-    def action_result(self):
+    def action_result(self) -> Optional[ActionResult]:
         if not self.can_afford_vespene:
             return ActionResult.NotEnoughVespene
         elif not self.can_afford_minerals:

@@ -1,7 +1,7 @@
 import random
 import warnings
 from itertools import chain
-from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Union
+from typing import Any, Callable, Dict, Iterable, List, Optional, Set, Tuple, Union
 
 from .ids.unit_typeid import UnitTypeId
 from .position import Point2, Point3
@@ -10,7 +10,7 @@ from .unit import Unit, UnitGameData
 warnings.simplefilter("once")
 
 
-class Units(list):
+class Units(List[Unit]):
     """A collection of Unit objects. Makes it easy to select units by selectors."""
 
     # TODO: You dont need to provide game_data any more.
@@ -31,7 +31,7 @@ class Units(list):
             )
         return cls((Unit(u) for u in units))
 
-    def __init__(self, units, game_data=None):
+    def __init__(self, units: Iterable[Unit], game_data=None):
         if game_data:
             warnings.warn(
                 "Keyword argument 'game_data' in Units function '__init__' is deprecated.",
@@ -43,13 +43,13 @@ class Units(list):
             )
         super().__init__(units)
 
-    def __call__(self, *args, **kwargs):
+    def __call__(self, *args, **kwargs) -> "UnitSelection":
         return UnitSelection(self, *args, **kwargs)
 
-    def select(self, *args, **kwargs):
+    def select(self, *args, **kwargs) -> "UnitSelection":
         return UnitSelection(self, *args, **kwargs)
 
-    def copy(self):
+    def copy(self) -> "Units":
         return self.subgroup(self)
 
     def __or__(self, other: "Units") -> "Units":
@@ -112,7 +112,7 @@ class Units(list):
         assert self.exists
         return random.choice(self)
 
-    def random_or(self, other: any) -> Unit:
+    def random_or(self, other: Any) -> Unit:
         return random.choice(self) if self.exists else other
 
     # NOTE former argument 'require_all' is not needed any more
@@ -164,13 +164,13 @@ class Units(list):
         position = position.position
         return self.filter(lambda unit: unit.distance_to(position.to2) > distance)
 
-    def subgroup(self, units):
+    def subgroup(self, units) -> "Units":
         return Units(units)
 
-    def filter(self, pred: callable) -> "Units":
+    def filter(self, pred: Callable[[Unit], Any]) -> "Units":
         return self.subgroup(filter(pred, self))
 
-    def sorted(self, keyfn: callable, reverse: bool = False) -> "Units":
+    def sorted(self, keyfn: Callable[[Unit], Any], reverse: bool = False) -> "Units":
         return self.subgroup(sorted(self, key=keyfn, reverse=reverse))
 
     def sorted_by_distance_to(self, position: Union[Unit, Point2], reverse: bool = False) -> "Units":
