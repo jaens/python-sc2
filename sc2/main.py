@@ -22,7 +22,7 @@ class SlidingTimeWindow:
         assert size > 0
 
         self.window_size = size
-        self.window = []
+        self.window: List[float] = []
 
     def push(self, value: float):
         self.window = (self.window + [value])[-self.window_size:]
@@ -39,7 +39,7 @@ class SlidingTimeWindow:
         return sum(self.window[1:])
 
     @property
-    def available_fmt(self) -> float:
+    def available_fmt(self) -> str:
         return ",".join(f"{w:.2f}" for w in self.window[1:])
 
 
