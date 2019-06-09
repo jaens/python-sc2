@@ -286,7 +286,7 @@ class Cost:
         self.time = time
 
     def __repr__(self) -> str:
-        return f"Cost({self.minerals}, {self.vespene})"
+        return f"Cost({self.minerals}, {self.vespene}, {self.time !r})"
 
     def __eq__(self, other) -> bool:
         return self.minerals == other.minerals and self.vespene == other.vespene
