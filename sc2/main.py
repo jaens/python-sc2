@@ -1,18 +1,23 @@
 import asyncio
 import logging
 import time
+from typing import List, Sequence, Tuple, Union, TYPE_CHECKING
 
 import async_timeout
 from s2clientprotocol import sc2api_pb2 as sc_pb
 
+from .bot_ai import BotAI
 from .client import Client
+from .controller import Controller
 from .data import CreateGameError, Result
 from .game_state import GameState
-from .player import Bot, Human
+from .maps import Map
+from .player import AbstractPlayer, Bot, Human
 from .portconfig import Portconfig
 from .protocol import ConnectionAlreadyClosed, ProtocolError
 from .sc2process import SC2Process
 from .unit import UnitGameData
+
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +48,7 @@ class SlidingTimeWindow:
         return ",".join(f"{w:.2f}" for w in self.window[1:])
 
 
-async def _play_game_human(client, player_id, realtime, game_time_limit):
+async def _play_game_human(client: Client, player_id, realtime, game_time_limit) -> Result:
     while True:
         state = await client.observation()
         if client._game_result:
@@ -56,7 +61,7 @@ async def _play_game_human(client, player_id, realtime, game_time_limit):
         if not realtime:
             await client.step()
 
-async def _play_game_ai(client, player_id, ai, realtime, step_time_limit, game_time_limit):
+async def _play_game_ai(client: Client, player_id, ai: BotAI, realtime, step_time_limit, game_time_limit) -> Result:
     if realtime:
         assert step_time_limit is None
 
@@ -209,7 +214,7 @@ async def _play_game_ai(client, player_id, ai, realtime, step_time_limit, game_t
 
         iteration += 1
 
-async def _play_game(player, client, realtime, portconfig, step_time_limit=None, game_time_limit=None, rgb_render_config=None):
+async def _play_game(player: AbstractPlayer, client: Client, realtime, portconfig, step_time_limit=None, game_time_limit=None, rgb_render_config=None) -> Result:
     assert isinstance(realtime, bool), repr(realtime)
 
     player_id = await client.join_game(
@@ -220,13 +225,14 @@ async def _play_game(player, client, realtime, portconfig, step_time_limit=None,
     if isinstance(player, Human):
         result = await _play_game_human(client, player_id, realtime, game_time_limit)
     else:
+        assert isinstance(player, Bot)
         result = await _play_game_ai(client, player_id, player.ai, realtime, step_time_limit, game_time_limit)
 
     logging.info(f"Result for player {player_id} - {player.name if player.name else str(player)}: {result._name_}")
 
     return result
 
-async def _setup_host_game(server, map_settings, players, realtime, random_seed=None):
+async def _setup_host_game(server: Controller, map_settings: Map, players: Sequence[AbstractPlayer], realtime, random_seed=None) -> Client:
     r = await server.create_game(map_settings, players, realtime, random_seed)
     if r.create_game.HasField("error"):
         err = f"Could not create game: {CreateGameError(r.create_game.error)}"
@@ -238,8 +244,8 @@ async def _setup_host_game(server, map_settings, players, realtime, random_seed=
     return Client(server._ws)
 
 
-async def _host_game(map_settings, players, realtime, portconfig=None, save_replay_as=None, step_time_limit=None,
-                     game_time_limit=None, rgb_render_config=None, random_seed=None):
+async def _host_game(map_settings: Map, players: Sequence[AbstractPlayer], realtime, portconfig=None, save_replay_as=None, step_time_limit=None,
+                     game_time_limit=None, rgb_render_config=None, random_seed=None) -> Result:
     assert len(players) > 0, "Can't create a game without players"
 
     assert any(isinstance(p, (Human, Bot)) for p in players)
@@ -293,7 +299,7 @@ def _host_game_iter(*args, **kwargs):
         new_playerconfig = yield asyncio.get_event_loop().run_until_complete(game.asend(new_playerconfig))
 
 
-async def _join_game(players, realtime, portconfig, save_replay_as=None, step_time_limit=None, game_time_limit=None):
+async def _join_game(players: Sequence[AbstractPlayer], realtime, portconfig, save_replay_as=None, step_time_limit=None, game_time_limit=None) -> Result:
     async with SC2Process(fullscreen=players[1].fullscreen) as server:
         await server.ping()
 
@@ -311,7 +317,7 @@ async def _join_game(players, realtime, portconfig, save_replay_as=None, step_ti
 
         return result
 
-def run_game(map_settings, players, **kwargs):
+def run_game(map_settings: Map, players: Sequence[AbstractPlayer], **kwargs) -> Union[Tuple[Result, Result], Result]:
     if sum(isinstance(p, (Human, Bot)) for p in players) > 1:
         host_only_args = ["save_replay_as", "rgb_render_config", "random_seed"]
         join_kwargs = {k: v for k, v in kwargs.items() if k not in host_only_args}
