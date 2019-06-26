@@ -109,10 +109,10 @@ class SC2Process:
 
     async def _connect(self) -> 'aiohttp.ClientWebSocketResponse':
         for i in range(60):
-            if self._process is None:
-                # The ._clean() was called, clearing the process
-                logger.debug("Process cleanup complete, exit")
-                sys.exit()
+            # if self._process is None:
+            #     # The ._clean() was called, clearing the process
+            #     logger.debug("Process cleanup complete, exit")
+            #     sys.exit()
 
             await asyncio.sleep(1)
             self._session = aiohttp.ClientSession()
